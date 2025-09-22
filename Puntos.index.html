@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bienvenidos Docentes - Dashboard Interactivo</title>
+<style>
+:root{
+  --bg:#0b0b0b;
+  --card:#1c1c1c;
+  --text:#f0e6c2;
+  --accent:#d4af37;
+  --muted:#aaa;
+}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);}
+.wrap{max-width:1200px;margin:20px auto;padding:15px;}
+header h1{margin:0;font-size:28px;}
+.description{margin-top:10px;font-size:14px;line-height:1.5;color:var(--muted);}
+button,input{font:inherit;border-radius:6px;}
+button{background:var(--accent);color:#000;padding:6px 12px;border:none;cursor:pointer;}
+button.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.2);}
+.dashboard{margin-top:20px;}
+.course-list{display:flex;flex-wrap:wrap;gap:15px;}
+.course-item{background:var(--card);padding:15px;border-radius:12px;cursor:pointer;flex:1 1 250px;min-width:220px;text-align:center;transition:0.3s;box-shadow:0 4px 10px rgba(0,0,0,.5);position:relative;}
+.course-item:hover{background:#2a2a2a;}
+.course-item button.delCourse{position:absolute;top:5px;right:5px;padding:2px 6px;font-size:12px;background:red;color:#fff;border:none;border-radius:4px;cursor:pointer;}
+.course-panel{margin-top:20px;display:none;}
+.course-title{font-size:20px;margin:0 0 10px 0;text-align:center;}
+.students-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.student-card{padding:8px;border-radius:10px;color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;cursor:default;}
+.student-card span.name{margin-bottom:4px;font-weight:bold;text-align:center;}
+.student-card input.points{width:60px;text-align:center;border:none;border-radius:4px;padding:2px;background:rgba(255,255,255,.3);color:#000;font-weight:bold;}
+.student-card input.points:focus{outline:none;background:rgba(255,255,255,.6);}
+.add-student, .add-course{margin-top:15px;display:flex;gap:5px;justify-content:center;}
+.add-student input,.add-course input{padding:6px;border-radius:6px;border:none;width:120px;}
+.add-student button,.add-course button{padding:6px 10px;}
+.student-controls{display:flex;gap:4px;margin-top:4px;}
+.student-controls button{padding:2px 6px;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Bienvenidos Docentes</h1>
+    <div class="description">
+      Sistema de puntajes y subastas en salones.<br>
+      Los alumnos acumularán puntos a partir de su desempeño académico y conductual. Cada nota o logro escolar se traducirá en puntos para canjear beneficios o participar en subastas.<br>
+      Beneficios: estimulación del esfuerzo, gamificación del aprendizaje y mayor involucramiento escolar.
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <div class="add-course">
+      <input type="text" id="newCourseName" placeholder="Nombre del curso"/>
+      <button id="addCourseBtn">Agregar Curso</button>
+    </div>
+    <div class="course-list" id="courseList"></div>
+
+    <div class="course-panel" id="coursePanel">
+      <h2 class="course-title" id="courseTitle"></h2>
+      <div class="students-grid" id="studentsGrid"></div>
+      <div class="add-student">
+        <input type="text" id="newStudentName" placeholder="Nombre del alumno"/>
+        <input type="number" id="newStudentPoints" placeholder="Puntos" value="0"/>
+        <button id="addStudentBtn">Agregar Alumno</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='puntaje_tablero_v3';
+let teachers=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+
+function id(){ return 'id_'+Math.random().toString(36).slice(2,9); }
+function save(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(teachers)); }
+
+/* Demo inicial */
+function initDemo(){
+  if(teachers.length) return;
+  const t={id:id(),name:'Prof. Ejemplo',courses:[
+    {id:id(),name:'Matemática 3º',students:[
+      {id:id(),name:'Juan Pérez',points:5000},
+      {id:id(),name:'María Gómez',points:4500},
+      {id:id(),name:'Ana Ruiz',points:3000},
+      {id:id(),name:'Luis Torres',points:1000},
+      {id:id(),name:'Sofía Díaz',points:500}
+    ]},
+    {id:id(),name:'Química 4º',students:[
+      {id:id(),name:'Carlos Vega',points:7000},
+      {id:id(),name:'Elena Cruz',points:6000}
+    ]}
+  ]};
+  teachers.push(t);
+  save();
+}
+initDemo();
+
+/* ===== Render Cursos ===== */
+function renderCourses(){
+  const list=document.getElementById('courseList');
+  list.innerHTML='';
+  const teacher=teachers[0]; 
+  teacher.courses.forEach(course=>{
+    const div=document.createElement('div');
+    div.className='course-item';
+    div.textContent=course.name;
+    div.onclick=()=>openCourse(course.id);
+
+    const delBtn=document.createElement('button');
+    delBtn.textContent='✖';
+    delBtn.className='delCourse';
+    delBtn.onclick=(e)=>{
+      e.stopPropagation();
+      if(confirm('Eliminar curso?')){
+        teacher.courses=teacher.courses.filter(c=>c.id!==course.id);
+        save();
+        renderCourses();
+        document.getElementById('coursePanel').style.display='none';
+      }
+    }
+    div.appendChild(delBtn);
+
+    list.appendChild(div);
+  });
+}
+
+/* ===== Abrir curso ===== */
+let currentCourseId=null;
+function openCourse(cid){
+  currentCourseId=cid;
+  const panel=document.getElementById('coursePanel');
+  const title=document.getElementById('courseTitle');
+  const grid=document.getElementById('studentsGrid');
+  const course=teachers[0].courses.find(c=>c.id===cid);
+  title.textContent=course.name;
+  panel.style.display='block';
+  renderStudents(course);
+}
+
+/* ===== Render Alumnos ===== */
+function renderStudents(course){
+  const grid=document.getElementById('studentsGrid');
+  grid.innerHTML='';
+  const students=course.students.slice().sort((a,b)=>b.points-a.points);
+  const total=students.length;
+
+  students.forEach((s,i)=>{
+    const scard=document.createElement('div');
+    scard.className='student-card';
+
+    const nameSpan=document.createElement('span');
+    nameSpan.className='name';
+    nameSpan.textContent=s.name;
+
+    const ptsInput=document.createElement('input');
+    ptsInput.className='points';
+    ptsInput.type='number';
+    ptsInput.value=s.points;
+    ptsInput.addEventListener('change',()=>{
+      s.points=parseInt(ptsInput.value)||0;
+      save();
+      openCourse(currentCourseId);
+    });
+
+    const controls=document.createElement('div');
+    controls.className='student-controls';
+    const delBtn=document.createElement('button');
+    delBtn.textContent='🗑';
+    delBtn.onclick=()=>{ 
+      if(confirm('Eliminar alumno?')){
+        course.students=course.students.filter(x=>x.id!==s.id);
+        save();
+        openCourse(currentCourseId);
+      }
+    };
+    controls.appendChild(delBtn);
+
+    scard.appendChild(nameSpan);
+    scard.appendChild(ptsInput);
+    scard.appendChild(controls);
+
+    // Colores ranking
+    const rank=i+1;
+    if(rank===1) scard.style.background='linear-gradient(90deg,#b68eff,#8a5cd1,#d47fff)';
+    else if(rank===2) scard.style.background='linear-gradient(90deg,#5c8ee2,#3399ff,#000022)';
+    else if(rank===3) scard.style.background='linear-gradient(90deg,#fff1b5,#ffd700,#f0e68c)';
+    else if(rank>=4 && rank<=8) scard.style.background='#6cbf6c';
+    else if(rank>=9 && rank<=14) scard.style.background='#ffa64d';
+    else scard.style.background='#d9534f';
+
+    grid.appendChild(scard);
+  });
+}
+
+/* ===== Agregar alumno ===== */
+document.getElementById('addStudentBtn').onclick=()=>{
+  const name=document.getElementById('newStudentName').value.trim();
+  const pts=parseInt(document.getElementById('newStudentPoints').value)||0;
+  if(!name) return alert('Ingrese nombre del alumno');
+  const course=teachers[0].courses.find(c=>c.id===currentCourseId);
+  course.students.push({id:id(),name,points:pts});
+  save();
+  document.getElementById('newStudentName').value='';
+  document.getElementById('newStudentPoints').value='0';
+  openCourse(currentCourseId);
+}
+
+/* ===== Agregar curso ===== */
+document.getElementById('addCourseBtn').onclick=()=>{
+  const cname=document.getElementById('newCourseName').value.trim();
+  if(!cname) return alert('Ingrese nombre del curso');
+  teachers[0].courses.push({id:id(),name:cname,students:[]});
+  save();
+  document.getElementById('newCourseName').value='';
+  renderCourses();
+}
+
+/* Inicializar */
+renderCourses();
+</script>
+</body>
+</html>
